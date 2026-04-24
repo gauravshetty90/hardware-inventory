@@ -175,6 +175,7 @@ class MainWindow(QMainWindow):
         self.table.resizeColumnsToContents()
         self.table.setSortingEnabled(True)
 
+        self.populate_category_filter()
         self.apply_filters()
 
     def apply_filters(self) -> None:
@@ -185,38 +186,54 @@ class MainWindow(QMainWindow):
 
         self.table.clearSelection()
 
+        category_col = self.columns.index("category") if "category" in self.columns else None
+        quantity_col = self.columns.index("quantity") if "quantity" in self.columns else None
+        min_quantity_col = self.columns.index("min_quantity") if "min_quantity" in self.columns else None
+
         for row in range(self.table.rowCount()):
-            sku_item = self.table.item(row, 0)
-            name_item = self.table.item(row, 1)
-            category_item = self.table.item(row, 2)
-            quantity_item = self.table.item(row, 3)
-            cost_item = self.table.item(row, 4)
-            sell_item = self.table.item(row, 5)
-            min_qty_item = self.table.item(row, 6)
+            row_values = []
 
-            sku = sku_item.text() if sku_item else ""
-            name = name_item.text() if name_item else ""
-            category = category_item.text() if category_item else ""
-            quantity = int(quantity_item.text()) if quantity_item else 0
-            cost_price = cost_item.text() if cost_item else ""
-            sell_price = sell_item.text() if sell_item else ""
-            min_quantity = int(min_qty_item.text()) if min_qty_item else 0
+            for col in range(self.table.columnCount()):
+                item = self.table.item(row, col)
+                row_values.append(item.text() if item else "")
 
-            searchable_text = " ".join([
-                sku,
-                name,
-                category,
-                str(quantity),
-                cost_price,
-                sell_price,
-                str(min_quantity),
-            ])
-            normalized_row_text = self.normalize_text(searchable_text)
+            normalized_row_text = self.normalize_text(" ".join(row_values))
+
+            category = ""
+            if category_col is not None:
+                item = self.table.item(row, category_col)
+                category = item.text() if item else ""
+
+            quantity = 0
+            if quantity_col is not None:
+                item = self.table.item(row, quantity_col)
+                try:
+                    quantity = int(float(item.text())) if item else 0
+                except ValueError:
+                    quantity = 0
+
+            min_quantity = 0
+            if min_quantity_col is not None:
+                item = self.table.item(row, min_quantity_col)
+                try:
+                    min_quantity = int(float(item.text())) if item else 0
+                except ValueError:
+                    min_quantity = 0
 
             matches_search = not query or query in normalized_row_text
-            matches_category = selected_category == "All" or category == selected_category
-            matches_low_stock = not low_stock_only or quantity <= min_quantity
-            matches_out_of_stock = not out_of_stock_only or quantity == 0
+            matches_category = (
+                selected_category == "All"
+                or not selected_category
+                or category == selected_category
+            )
+            matches_low_stock = (
+                not low_stock_only
+                or (quantity_col is not None and min_quantity_col is not None and quantity <= min_quantity)
+            )
+            matches_out_of_stock = (
+                not out_of_stock_only
+                or (quantity_col is not None and quantity == 0)
+            )
 
             show_row = (
                 matches_search
@@ -226,6 +243,31 @@ class MainWindow(QMainWindow):
             )
 
             self.table.setRowHidden(row, not show_row)
+
+    def populate_category_filter(self) -> None:
+        current_value = self.category_filter.currentText()
+        
+        products = self.inventory_service.get_all_products()
+        product_dicts = [product.to_dict() for product in products]
+        
+        categories = sorted({
+            str(product_dict.get("category", "")).strip()
+            for product_dict in product_dicts
+            if str(product_dict.get("category", "")).strip()
+        })
+        
+        self.category_filter.blockSignals(True)
+        self.category_filter.clear()
+        self.category_filter.addItem("All")
+        self.category_filter.addItems(categories)
+        
+        index = self.category_filter.findText(current_value)
+        if index >= 0:
+            self.category_filter.setCurrentIndex(index)
+        else:
+            self.category_filter.setCurrentIndex(0)
+        
+        self.category_filter.blockSignals(False)
 
     def get_selected_sku(self) -> str | None:
         selected_row = self.table.currentRow()
@@ -292,16 +334,3 @@ class MainWindow(QMainWindow):
                 self.refresh_table()
             except ValueError as exc:
                 QMessageBox.warning(self, "Error", str(exc))
-
-    # def _load_table(self) -> None:
-    #     products = self.inventory_service.get_all_products()
-    #     self.table.setRowCount(len(products))
-
-    #     for row, product in enumerate(products):
-    #         self.table.setItem(row, 0, QTableWidgetItem(product.sku))
-    #         self.table.setItem(row, 1, QTableWidgetItem(product.name))
-    #         self.table.setItem(row, 2, QTableWidgetItem(product.category))
-    #         self.table.setItem(row, 3, QTableWidgetItem(str(product.quantity)))
-    #         self.table.setItem(row, 4, QTableWidgetItem(f"{product.cost_price:.2f}"))
-    #         self.table.setItem(row, 5, QTableWidgetItem(f"{product.sell_price:.2f}"))
-    #         self.table.setItem(row, 6, QTableWidgetItem(str(product.min_quantity)))
