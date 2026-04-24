@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSignalBlocker
 from PySide6.QtGui import QColor, QBrush, QFont
 
 from hardware_inventory.services.inventory_service import InventoryService
@@ -53,7 +53,22 @@ class MainWindow(QMainWindow):
         self._connect_signals()
         self.columns = []
         self.refresh_table()
-        
+
+    def apply_stock_highlighting_to_quantity_cell(
+        self,
+        item: QTableWidgetItem,
+        quantity: int | float | None,
+        min_quantity: int | float | None,
+    ) -> None:
+        if quantity is None:
+            return
+
+        if quantity == 0:
+            item.setBackground(QBrush(QColor("#f8d7da")))
+            item.setForeground(QBrush(QColor("#842029")))
+        elif min_quantity is not None and quantity > 0 and quantity <= min_quantity:
+            item.setBackground(QBrush(QColor("#fff3cd")))
+            item.setForeground(QBrush(QColor("#997404")))
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -116,8 +131,9 @@ class MainWindow(QMainWindow):
 
         self.search_input.textChanged.connect(self.apply_filters)
         self.category_filter.currentTextChanged.connect(self.apply_filters)
-        self.low_stock_checkbox.toggled.connect(self.apply_filters)
-        self.out_of_stock_checkbox.toggled.connect(self.apply_filters)
+        self.low_stock_checkbox.toggled.connect(self.on_low_stock_toggled)
+        self.out_of_stock_checkbox.toggled.connect(
+            self.on_out_of_stock_toggled)
 
     def normalize_text(self, text: str) -> str:
         return "".join(ch.lower() for ch in text if ch.isalnum())
@@ -154,6 +170,9 @@ class MainWindow(QMainWindow):
                 header_item.setFont(header_font)
 
         for row_index, product_dict in enumerate(product_dicts):
+            quantity = product_dict.get("quantity")
+            min_quantity = product_dict.get("min_quantity")
+
             for col_index, column_name in enumerate(self.columns):
                 value = product_dict.get(column_name, "")
                 display_value = "" if value is None else str(value)
@@ -168,6 +187,12 @@ class MainWindow(QMainWindow):
                 else:
                     item.setTextAlignment(
                         Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+                    )
+                if column_name == "quantity":
+                    self.apply_stock_highlighting_to_quantity_cell(
+                        item,
+                        quantity,
+                        min_quantity,
                     )
 
                 self.table.setItem(row_index, col_index, item)
@@ -186,9 +211,12 @@ class MainWindow(QMainWindow):
 
         self.table.clearSelection()
 
-        category_col = self.columns.index("category") if "category" in self.columns else None
-        quantity_col = self.columns.index("quantity") if "quantity" in self.columns else None
-        min_quantity_col = self.columns.index("min_quantity") if "min_quantity" in self.columns else None
+        category_col = self.columns.index(
+            "category") if "category" in self.columns else None
+        quantity_col = self.columns.index(
+            "quantity") if "quantity" in self.columns else None
+        min_quantity_col = self.columns.index(
+            "min_quantity") if "min_quantity" in self.columns else None
 
         for row in range(self.table.rowCount()):
             row_values = []
@@ -228,7 +256,12 @@ class MainWindow(QMainWindow):
             )
             matches_low_stock = (
                 not low_stock_only
-                or (quantity_col is not None and min_quantity_col is not None and quantity <= min_quantity)
+                or (
+                    quantity_col is not None
+                    and min_quantity_col is not None
+                    and quantity > 0
+                    and quantity <= min_quantity
+                )
             )
             matches_out_of_stock = (
                 not out_of_stock_only
@@ -246,27 +279,27 @@ class MainWindow(QMainWindow):
 
     def populate_category_filter(self) -> None:
         current_value = self.category_filter.currentText()
-        
+
         products = self.inventory_service.get_all_products()
         product_dicts = [product.to_dict() for product in products]
-        
+
         categories = sorted({
             str(product_dict.get("category", "")).strip()
             for product_dict in product_dicts
             if str(product_dict.get("category", "")).strip()
         })
-        
+
         self.category_filter.blockSignals(True)
         self.category_filter.clear()
         self.category_filter.addItem("All")
         self.category_filter.addItems(categories)
-        
+
         index = self.category_filter.findText(current_value)
         if index >= 0:
             self.category_filter.setCurrentIndex(index)
         else:
             self.category_filter.setCurrentIndex(0)
-        
+
         self.category_filter.blockSignals(False)
 
     def get_selected_sku(self) -> str | None:
@@ -334,3 +367,19 @@ class MainWindow(QMainWindow):
                 self.refresh_table()
             except ValueError as exc:
                 QMessageBox.warning(self, "Error", str(exc))
+
+    def on_low_stock_toggled(self, checked: bool) -> None:
+        if checked:
+            blocker = QSignalBlocker(self.out_of_stock_checkbox)
+            self.out_of_stock_checkbox.setChecked(False)
+            del blocker
+
+        self.apply_filters()
+
+    def on_out_of_stock_toggled(self, checked: bool) -> None:
+        if checked:
+            blocker = QSignalBlocker(self.low_stock_checkbox)
+            self.low_stock_checkbox.setChecked(False)
+            del blocker
+
+        self.apply_filters()
