@@ -57,7 +57,6 @@ class MainWindow(QMainWindow):
         self.refresh_table()
         self.export_service = ExportService()
 
-
     def apply_stock_highlighting_to_quantity_cell(
         self,
         item: QTableWidgetItem,
@@ -117,7 +116,7 @@ class MainWindow(QMainWindow):
         )
 
         self.table.setSelectionMode(
-            QAbstractItemView.SelectionMode.SingleSelection
+            QAbstractItemView.SelectionMode.ExtendedSelection
         )
 
         self.table.setEditTriggers(
@@ -358,23 +357,40 @@ class MainWindow(QMainWindow):
                 QMessageBox.warning(self, "Error", str(exc))
 
     def delete_product(self) -> None:
-        sku = self.get_selected_sku()
-        if sku is None:
+        selected_rows = sorted(
+            {index.row() for index in self.table.selectionModel().selectedRows()},
+            reverse=True,
+        )
+
+        if not selected_rows:
             QMessageBox.information(
-                self, "No Selection", "Please select a product to delete.")
+                self,
+                "No Selection",
+                "Please select one or more products to delete.",
+            )
             return
+
+        sku_col = self.columns.index("sku")
+        selected_skus = []
+
+        for row in selected_rows:
+            item = self.table.item(row, sku_col)
+            if item is not None:
+                selected_skus.append(item.text())
 
         reply = QMessageBox.question(
             self,
             "Confirm Delete",
-            f"Delete product with SKU '{sku}'?",
+            f"Delete {len(selected_skus)} selected product(s)?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
 
         if reply == QMessageBox.StandardButton.Yes:
             try:
-                self.inventory_service.delete_product(sku)
-                self.refresh_table()
+                for sku in selected_skus:
+                    self.inventory_service.delete_product(sku)
+
+                    self.refresh_table()
             except ValueError as exc:
                 QMessageBox.warning(self, "Error", str(exc))
 
@@ -412,7 +428,7 @@ class MainWindow(QMainWindow):
 
         if not file_path:
             return
-        
+
         if not file_path.lower().endswith(".csv"):
             file_path += ".csv"
 

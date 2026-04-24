@@ -83,7 +83,7 @@
   {
     "sku": "NT001",
     "name": "Nuts and Bolts",
-    "category": "Fasteners",
+    "category": "Fastener",
     "quantity": 4,
     "cost_price": 10.0,
     "sell_price": 15.0,
