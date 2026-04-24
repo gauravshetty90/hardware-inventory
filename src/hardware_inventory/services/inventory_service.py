@@ -44,3 +44,9 @@ class InventoryService:
             if product.sku == sku:
                 return product
         return None
+
+    def replace_all_products(self, product_dicts: list[dict]) -> None:
+        products = [Product.from_dict(product_dict)
+                    for product_dict in product_dicts]
+        self.products = products
+        self.store.save_products(products)

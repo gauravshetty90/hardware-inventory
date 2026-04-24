@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QComboBox,
+    QFileDialog,
     QHBoxLayout,
     QLineEdit,
     QMainWindow,
@@ -18,6 +19,7 @@ from PySide6.QtCore import Qt, QSignalBlocker
 from PySide6.QtGui import QColor, QBrush, QFont
 
 from hardware_inventory.services.inventory_service import InventoryService
+from hardware_inventory.services.export_service import ExportService
 from hardware_inventory.storage.json_store import JsonStore
 from hardware_inventory.utils.paths import PRODUCTS_FILE
 from hardware_inventory.ui.product_dialog import ProductDialog
@@ -53,6 +55,8 @@ class MainWindow(QMainWindow):
         self._connect_signals()
         self.columns = []
         self.refresh_table()
+        self.export_service = ExportService()
+
 
     def apply_stock_highlighting_to_quantity_cell(
         self,
@@ -80,10 +84,14 @@ class MainWindow(QMainWindow):
         self.add_button = QPushButton("Add Product")
         self.edit_button = QPushButton("Edit Product")
         self.delete_button = QPushButton("Delete Product")
+        self.export_button = QPushButton("Export CSV")
+        self.import_button = QPushButton("Import CSV")
 
         button_layout.addWidget(self.add_button)
         button_layout.addWidget(self.edit_button)
         button_layout.addWidget(self.delete_button)
+        button_layout.addWidget(self.export_button)
+        button_layout.addWidget(self.import_button)
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText(
@@ -128,6 +136,8 @@ class MainWindow(QMainWindow):
         self.add_button.clicked.connect(self.add_product)
         self.edit_button.clicked.connect(self.edit_product)
         self.delete_button.clicked.connect(self.delete_product)
+        self.export_button.clicked.connect(self.export_products)
+        self.import_button.clicked.connect(self.import_products)
 
         self.search_input.textChanged.connect(self.apply_filters)
         self.category_filter.currentTextChanged.connect(self.apply_filters)
@@ -383,3 +393,78 @@ class MainWindow(QMainWindow):
             del blocker
 
         self.apply_filters()
+
+    def export_products(self) -> None:
+        products = self.inventory_service.get_all_products()
+        product_dicts = [product.to_dict() for product in products]
+
+        if not product_dicts:
+            QMessageBox.information(
+                self, "Export CSV", "There are no products to export.")
+            return
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export Products to CSV",
+            "inventory_export.csv",
+            "CSV Files (*.csv)"
+        )
+
+        if not file_path:
+            return
+        
+        if not file_path.lower().endswith(".csv"):
+            file_path += ".csv"
+
+        try:
+            self.export_service.export_products_to_csv(
+                product_dicts, file_path)
+            QMessageBox.information(
+                self,
+                "Export CSV",
+                f"Products exported successfully to:\n{file_path}",
+            )
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Export CSV",
+                f"Failed to export products:\n{exc}",
+            )
+
+    def import_products(self) -> None:
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Import Products from CSV",
+            "",
+            "CSV Files (*.csv)"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            imported_products = self.export_service.import_products_from_csv(
+                file_path)
+
+            if not imported_products:
+                QMessageBox.warning(
+                    self,
+                    "Import CSV",
+                    "The selected CSV file contains no product rows.",
+                )
+                return
+
+            self.inventory_service.replace_all_products(imported_products)
+            self.refresh_table()
+
+            QMessageBox.information(
+                self,
+                "Import CSV",
+                f"Imported {len(imported_products)} products successfully.",
+            )
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Import CSV",
+                f"Failed to import products:\n{exc}",
+            )

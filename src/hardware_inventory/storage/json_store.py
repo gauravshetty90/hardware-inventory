@@ -18,5 +18,7 @@ class JsonStore:
     def save_products(self, products: list[Product]) -> None:
         self.file_path.parent.mkdir(parents=True, exist_ok=True)
 
+        data = [product.to_dict() for product in products]
+
         with self.file_path.open("w", encoding="utf-8") as f:
             json.dump([p.to_dict() for p in products], f, indent=2)
