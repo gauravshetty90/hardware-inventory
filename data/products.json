@@ -37,11 +37,11 @@
   },
   {
     "sku": "PLR001",
-    "name": "Combination Pliers 8in",
+    "name": "Cutting Pliers",
     "category": "Hand Tools",
-    "quantity": 16,
-    "cost_price": 5.4,
-    "sell_price": 9.99,
+    "quantity": 10,
+    "cost_price": 5.0,
+    "sell_price": 10.0,
     "min_quantity": 4
   },
   {
@@ -81,12 +81,12 @@
     "min_quantity": 3
   },
   {
-    "sku": "GLV001",
-    "name": "Safety Gloves Pair",
-    "category": "Safety",
-    "quantity": 30,
-    "cost_price": 2.4,
-    "sell_price": 5.25,
-    "min_quantity": 6
+    "sku": "NT001",
+    "name": "Nuts and Bolts",
+    "category": "Fasteners",
+    "quantity": 5,
+    "cost_price": 10.0,
+    "sell_price": 15.0,
+    "min_quantity": 5
   }
 ]
