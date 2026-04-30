@@ -1,10 +1,10 @@
 # Hardware Inventory
 
-A desktop inventory management application built with PySide6. The current implementation focuses on product inventory management, CSV import/export, filtering, and stock-aware table views, and the project structure has already been prepared for a future sales module based on a second tab in the UI.[1][2][3]
+A desktop inventory management application built with PySide6. The current implementation focuses on product inventory management, CSV import/export, filtering, and stock-aware table views, and the project structure has already been prepared for a future sales module based on a second tab in the UI.
 
 ## What the project does
 
-The application manages a catalog of hardware products with fields such as SKU, name, category, quantity, cost price, sell price, minimum quantity, and optional extra attributes that can appear dynamically in the table.[4]
+The application manages a catalog of hardware products with fields such as SKU, name, category, quantity, cost price, sell price, minimum quantity, and optional extra attributes that can appear dynamically in the table.
 
 At the moment, the app supports:
 
@@ -18,9 +18,9 @@ At the moment, the app supports:
 
 ## Current scope
 
-The project currently centers on the **Inventory** area of the application. A **Sales** area has been planned and some supporting files have been added, but sales logic and transaction workflows are not implemented yet.[1][3]
+The project currently centers on the **Inventory** area of the application. A **Sales** area has been planned and some supporting files have been added, but sales logic and transaction workflows are not implemented yet.
 
-The intended direction is a tab-based desktop application where inventory and sales live in separate UI sections. `QTabWidget` is designed for this style of multi-page desktop interface, where each tab hosts a different widget and only the active page is shown at a time.[1][5]
+The intended direction is a tab-based desktop application where inventory and sales live in separate UI sections. `QTabWidget` is designed for this style of multi-page desktop interface, where each tab hosts a different widget and only the active page is shown at a time.
 
 ## How the app works
 
@@ -34,17 +34,17 @@ The current inventory workflow is centered on CRUD-style product management:
 4. CSV import can replace the current inventory dataset.
 5. CSV export writes the visible inventory data to a user-chosen file path.
 
-This design separates UI actions from business logic and persistence, which makes the code easier to extend as the project grows.[6][2]
+This design separates UI actions from business logic and persistence, which makes the code easier to extend as the project grows.
 
 ### Filtering and display
 
-The main table uses a `QTableWidget` and supports row-based selection, sorting, dynamic columns, and multiple filters. `QTableWidget` is appropriate when the application directly creates and manages table items in code rather than using a full custom model/view layer.[7]
+The main table uses a `QTableWidget` and supports row-based selection, sorting, dynamic columns, and multiple filters. `QTableWidget` is appropriate when the application directly creates and manages table items in code rather than using a full custom model/view layer.
 
 The table refresh logic converts product objects into dictionaries, determines any additional non-core fields dynamically, rebuilds the headers, repopulates all rows, reapplies visual formatting, and then reapplies active filters. This allows the table to adapt if products contain additional attributes beyond the base schema.
 
 ### Import and export
 
-CSV import and export are user-driven through file dialogs. In PySide6, `QFileDialog.getOpenFileName()` is the standard way to ask the user for a source file, while `QFileDialog.getSaveFileName()` is used to ask the user where to save an exported file.[8][9]
+CSV import and export are user-driven through file dialogs. In PySide6, `QFileDialog.getOpenFileName()` is the standard way to ask the user for a source file, while `QFileDialog.getSaveFileName()` is used to ask the user where to save an exported file.
 
 The current flow is:
 
@@ -53,7 +53,7 @@ The current flow is:
 
 ## Project structure
 
-The project follows a `src/` layout, which is a good fit for larger Python applications because it keeps importable application code under `src/` and helps avoid accidental import-path issues during development.[2][10][11]
+The project follows a `src/` layout, which is a good fit for larger Python applications because it keeps importable application code under `src/` and helps avoid accidental import-path issues during development.
 
 A likely structure for the project is:
 
@@ -85,15 +85,15 @@ If new sales-related files have already been added, they will naturally fit unde
 
 The application is organized around a layered structure:
 
-| Layer | Responsibility |
-|---|---|
-| `ui/` | Windows, dialogs, buttons, tables, filters, and user interaction |
+| Layer       | Responsibility                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------ |
+| `ui/`       | Windows, dialogs, buttons, tables, filters, and user interaction                           |
 | `services/` | Business rules such as add, update, delete, import replacement, and future sales recording |
-| `storage/` | Reading and writing persisted data |
-| `models/` | Domain objects such as `Product` and the planned `Sale` |
-| `utils/` | Shared paths and helper utilities |
+| `storage/`  | Reading and writing persisted data                                                         |
+| `models/`   | Domain objects such as `Product` and the planned `Sale`                                    |
+| `utils/`    | Shared paths and helper utilities                                                          |
 
-This separation is useful because inventory systems often grow from a simple CRUD app into a broader operations tool, and clean boundaries make that evolution safer.[6][12]
+This separation is useful because inventory systems often grow from a simple CRUD app into a broader operations tool, and clean boundaries make that evolution safer.
 
 ## Main components
 
@@ -103,7 +103,7 @@ Application entry point. This file starts the Qt application and opens the main 
 
 ### `ui/main_window.py`
 
-The central desktop UI. Right now it contains the inventory table, toolbar buttons, search input, category filter, stock filters, and CSV import/export actions. As the project evolves, this file can either remain the top-level shell or become the host for a tab widget that contains dedicated inventory and sales pages.[1][13]
+The central desktop UI. Right now it contains the inventory table, toolbar buttons, search input, category filter, stock filters, and CSV import/export actions. As the project evolves, this file can either remain the top-level shell or become the host for a tab widget that contains dedicated inventory and sales pages.
 
 ### `ui/product_dialog.py`
 
@@ -115,7 +115,7 @@ Encapsulates product-related business logic such as loading all products, retrie
 
 ### `services/export_service.py`
 
-Owns CSV-specific import/export logic so that file-format handling stays outside the main window code. This keeps the UI thinner and makes the CSV workflow easier to test and extend.[14][15]
+Owns CSV-specific import/export logic so that file-format handling stays outside the main window code. This keeps the UI thinner and makes the CSV workflow easier to test and extend.
 
 ### `storage/json_store.py`
 
@@ -141,7 +141,7 @@ The table also supports extra fields beyond the core schema by detecting additio
 
 ## Planned sales module
 
-The project is being prepared for a second tab focused on **sales transactions** rather than inventory master data. This is the right direction architecturally because a sale should be treated as a separate transaction record instead of just another product attribute.[3][16]
+The project is being prepared for a second tab focused on **sales transactions** rather than inventory master data. This is the right direction architecturally because a sale should be treated as a separate transaction record instead of just another product attribute.
 
 A good first sales record would include:
 
@@ -153,7 +153,7 @@ A good first sales record would include:
 - sale date
 - total amount
 
-This approach preserves transaction history even if product names or prices change later, which is a standard design recommendation in inventory and point-of-sale systems.[3]
+This approach preserves transaction history even if product names or prices change later, which is a standard design recommendation in inventory and point-of-sale systems.
 
 ### Proposed sales architecture
 
@@ -165,7 +165,7 @@ The next phase of the project can introduce:
 - `services/sales_service.py`
 - `storage/sales_store.py`
 
-The top-level main window can then host both pages inside a `QTabWidget`, with one tab for inventory management and one tab for sales operations.[1][5]
+The top-level main window can then host both pages inside a `QTabWidget`, with one tab for inventory management and one tab for sales operations.
 
 ## Typical user flow
 
@@ -189,7 +189,7 @@ The top-level main window can then host both pages inside a `QTabWidget`, with o
 
 ## Running the project
 
-Because the project uses a `src/` layout and the package lives under `src/hardware_inventory`, it is typically run from the repository root using a module path such as `hardware_inventory.main`.[2][10]
+Because the project uses a `src/` layout and the package lives under `src/hardware_inventory`, it is typically run from the repository root using a module path such as `hardware_inventory.main`.
 
 Example:
 
@@ -199,7 +199,7 @@ source .venv/bin/activate
 PYTHONPATH=src python -m hardware_inventory.main
 ```
 
-Using the package module path is appropriate when `main.py` is inside the `hardware_inventory` package rather than directly under `src/`.[10][11]
+Using the package module path is appropriate when `main.py` is inside the `hardware_inventory` package rather than directly under `src/`.
 
 ## Design notes
 
@@ -208,7 +208,7 @@ A few design choices in the current codebase are especially helpful:
 - **Service-based logic** keeps the UI layer smaller.
 - **CSV import/export isolated in a dedicated service** avoids file-format logic spreading across the app.
 - **Dynamic columns** make the inventory table more flexible.
-- **`src/` layout** supports cleaner imports and better project organization for growth.[2][11]
+- **`src/` layout** supports cleaner imports and better project organization for growth.
 
 ## Next recommended milestones
 
@@ -221,4 +221,4 @@ The most sensible next steps are:
 5. Add sales history filters and summary totals.
 6. Add tests for inventory and sales workflows.
 
-Keeping product records and sales records separate will make future reporting, totals, and transaction history easier to implement and maintain.[3][16]
+Keeping product records and sales records separate will make future reporting, totals, and transaction history easier to implement and maintain.
