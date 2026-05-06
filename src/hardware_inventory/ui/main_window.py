@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -21,8 +19,11 @@ from PySide6.QtGui import QColor, QBrush, QFont
 from hardware_inventory.services.inventory_service import InventoryService
 from hardware_inventory.services.export_service import ExportService
 from hardware_inventory.storage.json_store import JsonStore
-from hardware_inventory.utils.paths import PRODUCTS_FILE
+from hardware_inventory.utils.paths import PRODUCTS_FILE, SALES_FILE
 from hardware_inventory.ui.product_dialog import ProductDialog
+
+from hardware_inventory.services.sales_service import SalesService
+from hardware_inventory.storage.sales_store import SalesStore
 
 
 class MainWindow(QMainWindow):
@@ -37,18 +38,16 @@ class MainWindow(QMainWindow):
         "min_quantity",
     ]
 
-    def format_column_label(self, key: str) -> str:
-        return key.replace("_", " ").title()
-
-    def is_numeric_value(self, value) -> bool:
-        return isinstance(value, (int, float))
-
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Hardware Inventory")
         self.resize(1000, 700)
 
         self.inventory_service = InventoryService(JsonStore(PRODUCTS_FILE))
+        self.sales_service = SalesService(
+            SalesStore(SALES_FILE),
+            self.inventory_service,
+        )
 
         self._build_ui()
         # self._load_table()
@@ -56,6 +55,12 @@ class MainWindow(QMainWindow):
         self.columns = []
         self.refresh_table()
         self.export_service = ExportService()
+
+    def format_column_label(self, key: str) -> str:
+        return key.replace("_", " ").title()
+
+    def is_numeric_value(self, value) -> bool:
+        return isinstance(value, (int, float))
 
     def apply_stock_highlighting_to_quantity_cell(
         self,
@@ -86,11 +91,14 @@ class MainWindow(QMainWindow):
         self.export_button = QPushButton("Export CSV")
         self.import_button = QPushButton("Import CSV")
 
+        self.test_sale_button = QPushButton("Test Sale")
+
         button_layout.addWidget(self.add_button)
         button_layout.addWidget(self.edit_button)
         button_layout.addWidget(self.delete_button)
         button_layout.addWidget(self.export_button)
         button_layout.addWidget(self.import_button)
+        button_layout.addWidget(self.test_sale_button)
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText(
@@ -143,6 +151,7 @@ class MainWindow(QMainWindow):
         self.low_stock_checkbox.toggled.connect(self.on_low_stock_toggled)
         self.out_of_stock_checkbox.toggled.connect(
             self.on_out_of_stock_toggled)
+        self.test_sale_button.clicked.connect(self.test_record_sale)
 
     def normalize_text(self, text: str) -> str:
         return "".join(ch.lower() for ch in text if ch.isalnum())
@@ -484,3 +493,26 @@ class MainWindow(QMainWindow):
                 "Import CSV",
                 f"Failed to import products:\n{exc}",
             )
+
+    def test_record_sale(self) -> None:
+        sku = self.get_selected_sku()
+        if sku is None:
+            QMessageBox.information(
+                self, "Test Sale", "Select a product first.")
+            return
+
+        try:
+            sale = self.sales_service.record_sale(
+                product_sku=sku,
+                quantity=1,
+                unit_price=None,
+                sale_date=None,
+            )
+            QMessageBox.information(
+                self,
+                "Test Sale",
+                f"Sale recorded successfully:\n{sale.product_name}\nAmount: {sale.total_amount}",
+            )
+            self.refresh_table()
+        except Exception as exc:
+            QMessageBox.critical(self, "Test Sale Failed", str(exc))
