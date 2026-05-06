@@ -7,5 +7,32 @@
     "unit_price": 59.99,
     "sale_date": "2026-05-06",
     "total_amount": 59.99
+  },
+  {
+    "sale_id": "4202cd25-6624-4dba-a0a1-40231873d07f",
+    "product_sku": "SAW001",
+    "product_name": "Hand Saw 20in",
+    "quantity": 1,
+    "unit_price": 12.5,
+    "sale_date": "2026-05-06",
+    "total_amount": 12.5
+  },
+  {
+    "sale_id": "3193bf29-e38e-4c0c-9b4a-400c97649466",
+    "product_sku": "HAM001",
+    "product_name": "Claw Hammer 16oz",
+    "quantity": 1,
+    "unit_price": 14.99,
+    "sale_date": "2026-05-06",
+    "total_amount": 14.99
+  },
+  {
+    "sale_id": "3ecf6fb8-0b2e-4418-93c4-00ef9906e931",
+    "product_sku": "NT001",
+    "product_name": "Nuts and Bolts",
+    "quantity": 1,
+    "unit_price": 15.0,
+    "sale_date": "2026-05-06",
+    "total_amount": 15.0
   }
 ]

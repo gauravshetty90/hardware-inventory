@@ -3,7 +3,7 @@
     "sku": "HAM001",
     "name": "Claw Hammer 16oz",
     "category": "Hand Tools",
-    "quantity": 24,
+    "quantity": 23,
     "cost_price": 8.5,
     "sell_price": 14.99,
     "min_quantity": 5
@@ -30,7 +30,7 @@
     "sku": "SAW001",
     "name": "Hand Saw 20in",
     "category": "Hand Tools",
-    "quantity": 11,
+    "quantity": 10,
     "cost_price": 7.25,
     "sell_price": 12.5,
     "min_quantity": 3
@@ -84,7 +84,7 @@
     "sku": "NT001",
     "name": "Nuts and Bolts",
     "category": "Fasteners",
-    "quantity": 4,
+    "quantity": 3,
     "cost_price": 10.0,
     "sell_price": 15.0,
     "min_quantity": 5
