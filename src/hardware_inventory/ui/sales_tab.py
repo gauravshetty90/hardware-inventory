@@ -1,11 +1,13 @@
-from PySide6.QtCore import QDate
+from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QComboBox,
     QDateEdit,
     QDoubleSpinBox,
     QFormLayout,
     QHBoxLayout,
     QMessageBox,
+    QLabel,
     QPushButton,
     QSpinBox,
     QTableWidget,
@@ -46,6 +48,8 @@ class SalesTab(QWidget):
         self.sale_date_input.setCalendarPopup(True)
         self.sale_date_input.setDate(QDate.currentDate())
 
+        self.add_item_button = QPushButton("Add Item")
+
         self.record_button = QPushButton("Record Sale")
 
         form_layout.addRow("Product:", self.product_combo)
@@ -53,31 +57,63 @@ class SalesTab(QWidget):
         form_layout.addRow("Unit Price:", self.unit_price_input)
         form_layout.addRow("Sale Date:", self.sale_date_input)
 
-        self.sales_table = QTableWidget()
-        self.sales_table.setColumnCount(7)
-        self.sales_table.setHorizontalHeaderLabels([
-            "Sale ID",
-            "Date",
+        basket_buttons = QHBoxLayout()
+        self.remove_item_button = QPushButton("Remove Selected Item")
+        self.record_sale_button = QPushButton("Record Sale")
+        self.total_label = QLabel("Grand Total: 0.00")
+
+        basket_buttons.addWidget(self.add_item_button)
+        basket_buttons.addWidget(self.remove_item_button)
+        basket_buttons.addStretch()
+        basket_buttons.addWidget(self.total_label)
+        basket_buttons.addWidget(self.record_sale_button)
+
+        self.cart_table = QTableWidget()
+        self.cart_table.setColumnCount(5)
+        self.cart_table.setHorizontalHeaderLabels([
             "SKU",
             "Product Name",
             "Quantity",
             "Unit Price",
-            "Total Amount",
+            "Line Total",
         ])
 
-        button_row = QHBoxLayout()
-        button_row.addWidget(self.record_button)
-        button_row.addStretch()
+        self.cart_table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows)
+        self.cart_table.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection)
+        self.cart_table.setEditTriggers(
+            QAbstractItemView.EditTrigger.DoubleClicked)
+
+        self.sales_table = QTableWidget()
+        self.sales_table.setColumnCount(4)
+        self.sales_table.setHorizontalHeaderLabels([
+            "Sale ID",
+            "Date",
+            "Total Items",
+            "Grand Total",
+        ])
+
+        self.sales_table.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.sales_table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows)
 
         main_layout.addLayout(form_layout)
-        main_layout.addLayout(button_row)
+        main_layout.addLayout(basket_buttons)
+        main_layout.addWidget(QLabel("Current Basket"))
+        main_layout.addWidget(self.cart_table)
+        main_layout.addWidget(QLabel("Sale History"))
         main_layout.addWidget(self.sales_table)
 
         self.setLayout(main_layout)
 
     def _connect_signals(self) -> None:
-        self.record_button.clicked.connect(self.record_sale)
         self.product_combo.currentIndexChanged.connect(self.on_product_changed)
+        self.add_item_button.clicked.connect(self.add_item_to_cart)
+        self.remove_item_button.clicked.connect(self.remove_selected_item)
+        self.record_sale_button.clicked.connect(self.record_sale)
+        self.cart_table.itemChanged.connect(self.on_cart_item_changed)
 
     def populate_products(self) -> None:
         self.product_combo.clear()
@@ -100,27 +136,160 @@ class SalesTab(QWidget):
         if product is not None:
             self.unit_price_input.setValue(product.sell_price)
 
-    def record_sale(self) -> None:
+    def add_item_to_cart(self) -> None:
         sku = self.product_combo.currentData()
         quantity = self.quantity_input.value()
         unit_price = self.unit_price_input.value()
-        sale_date = self.sale_date_input.date().toString("yyyy-MM-dd")
 
         if not sku:
-            QMessageBox.information(self, "Record Sale", "Please select a product.")
+            QMessageBox.information(
+                self, "Add Item", "Please select a product.")
+            return
+
+        product = self.inventory_service.get_product_by_sku(sku)
+        if product is None:
+            QMessageBox.warning(
+                self, "Add Item", "Selected product was not found.")
+            return
+        
+        for row in range(self.cart_table.rowCount()):
+            sku_item = self.cart_table.item(row, 0)
+            quantity_item = self.cart_table.item(row, 2)
+        
+            if sku_item is None or quantity_item is None:
+                continue
+                
+            if sku_item.text().strip() == product.sku:
+                current_quantity = int(float(quantity_item.text()))
+                quantity_item.setText(str(current_quantity + quantity))
+                return
+
+        row = self.cart_table.rowCount()
+        self.cart_table.insertRow(row)
+
+        sku_item = QTableWidgetItem(product.sku)
+        sku_item.setFlags(sku_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+
+        name_item = QTableWidgetItem(product.name)
+        name_item.setFlags(name_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+
+        quantity_item = QTableWidgetItem(str(quantity))
+        unit_price_item = QTableWidgetItem(f"{unit_price:.2f}")
+
+        line_total = quantity * unit_price
+        total_item = QTableWidgetItem(f"{line_total:.2f}")
+        total_item.setFlags(total_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+
+        self.cart_table.setItem(row, 0, sku_item)
+        self.cart_table.setItem(row, 1, name_item)
+        self.cart_table.setItem(row, 2, quantity_item)
+        self.cart_table.setItem(row, 3, unit_price_item)
+        self.cart_table.setItem(row, 4, total_item)
+
+        self.update_cart_totals()
+
+    def remove_selected_item(self) -> None:
+        selected_rows = self.cart_table.selectionModel().selectedRows()
+        if not selected_rows:
+            QMessageBox.information(
+                self, "Remove Item", "Select a cart row first.")
+            return
+
+        row = selected_rows[0].row()
+        self.cart_table.removeRow(row)
+        self.update_cart_totals()
+
+    def on_cart_item_changed(self, item: QTableWidgetItem) -> None:
+        if item.column() not in (2, 3):
+            return
+
+        row = item.row()
+
+        quantity_item = self.cart_table.item(row, 2)
+        unit_price_item = self.cart_table.item(row, 3)
+        total_item = self.cart_table.item(row, 4)
+
+        if quantity_item is None or unit_price_item is None or total_item is None:
             return
 
         try:
-            self.sales_service.record_sale(
-                product_sku=sku,
-                quantity=quantity,
-                unit_price=unit_price,
+            quantity = int(float(quantity_item.text()))
+            unit_price = float(unit_price_item.text())
+
+            if quantity <= 0:
+                raise ValueError
+            if unit_price < 0:
+                raise ValueError
+
+            line_total = quantity * unit_price
+            total_item.setText(f"{line_total:.2f}")
+
+            self.update_cart_totals()
+
+        except ValueError:
+            QMessageBox.warning(
+                self,
+                "Invalid Input",
+                "Quantity must be greater than zero and price must be zero or more.",
+            )
+
+    def update_cart_totals(self) -> None:
+        grand_total = 0.0
+
+        for row in range(self.cart_table.rowCount()):
+            item = self.cart_table.item(row, 4)
+            if item is not None:
+                try:
+                    grand_total += float(item.text())
+                except ValueError:
+                    pass
+
+        self.total_label.setText(f"Grand Total: {grand_total:.2f}")
+
+    def collect_sale_lines(self) -> list[dict]:
+        sale_lines = []
+
+        for row in range(self.cart_table.rowCount()):
+            sku_item = self.cart_table.item(row, 0)
+            quantity_item = self.cart_table.item(row, 2)
+            unit_price_item = self.cart_table.item(row, 3)
+
+            if sku_item is None or quantity_item is None or unit_price_item is None:
+                continue
+
+            sale_lines.append({
+                "sku": sku_item.text().strip(),
+                "quantity": int(float(quantity_item.text())),
+                "unit_price": float(unit_price_item.text()),
+            })
+
+        return sale_lines
+
+    def record_sale(self) -> None:
+        sale_lines = self.collect_sale_lines()
+        if not sale_lines:
+            QMessageBox.information(
+                self, "Record Sale", "Add at least one item to the basket.")
+            return
+
+        sale_date = self.sale_date_input.date().toString("yyyy-MM-dd")
+
+        try:
+            sale = self.sales_service.record_sale(
+                sale_lines=sale_lines,
                 sale_date=sale_date,
             )
 
-            QMessageBox.information(self, "Record Sale", "Sale recorded successfully.")
-            self.refresh_sales_table()
+            QMessageBox.information(
+                self,
+                "Record Sale",
+                f"Sale recorded successfully.\nSale ID: {sale.sale_id}",
+            )
+
+            self.cart_table.setRowCount(0)
+            self.update_cart_totals()
             self.populate_products()
+            self.refresh_sales_table()
 
             if self.on_sale_recorded is not None:
                 self.on_sale_recorded()
@@ -135,10 +304,9 @@ class SalesTab(QWidget):
         for row, sale in enumerate(sales):
             self.sales_table.setItem(row, 0, QTableWidgetItem(sale.sale_id))
             self.sales_table.setItem(row, 1, QTableWidgetItem(sale.sale_date))
-            self.sales_table.setItem(row, 2, QTableWidgetItem(sale.product_sku))
-            self.sales_table.setItem(row, 3, QTableWidgetItem(sale.product_name))
-            self.sales_table.setItem(row, 4, QTableWidgetItem(str(sale.quantity)))
-            self.sales_table.setItem(row, 5, QTableWidgetItem(f"{sale.unit_price:.2f}"))
-            self.sales_table.setItem(row, 6, QTableWidgetItem(f"{sale.total_amount:.2f}"))
+            self.sales_table.setItem(
+                row, 2, QTableWidgetItem(str(sale.total_items)))
+            self.sales_table.setItem(
+                row, 3, QTableWidgetItem(f"{sale.grand_total:.2f}"))
 
         self.sales_table.resizeColumnsToContents()

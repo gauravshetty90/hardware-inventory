@@ -12,7 +12,7 @@
     "sku": "SCR001",
     "name": "Phillips Screwdriver Set",
     "category": "Hand Tools",
-    "quantity": 18,
+    "quantity": 16,
     "cost_price": 6.75,
     "sell_price": 11.99,
     "min_quantity": 4
@@ -39,7 +39,7 @@
     "sku": "PLR001",
     "name": "Cutting Pliers",
     "category": "Hand Tools",
-    "quantity": 10,
+    "quantity": 8,
     "cost_price": 5.0,
     "sell_price": 10.0,
     "min_quantity": 4
@@ -57,7 +57,7 @@
     "sku": "SCRW01",
     "name": "Wood Screws 1.5in Box",
     "category": "Fasteners",
-    "quantity": 42,
+    "quantity": 41,
     "cost_price": 2.1,
     "sell_price": 4.5,
     "min_quantity": 8
@@ -75,7 +75,7 @@
     "sku": "PNT001",
     "name": "White Paint 1L",
     "category": "Paint",
-    "quantity": 9,
+    "quantity": 8,
     "cost_price": 6.5,
     "sell_price": 10.99,
     "min_quantity": 3
