@@ -42,5 +42,27 @@
     ],
     "total_items": 1,
     "grand_total": 10.99
+  },
+  {
+    "sale_id": "d23e32ff-18dd-46f5-9f00-b211502050e4",
+    "sale_date": "2026-05-07",
+    "items": [
+      {
+        "product_sku": "DRL001",
+        "product_name": "Cordless Drill 12V",
+        "quantity": 1,
+        "unit_price": 59.99,
+        "line_total": 59.99
+      },
+      {
+        "product_sku": "SCR001",
+        "product_name": "Phillips Screwdriver Set",
+        "quantity": 1,
+        "unit_price": 11.99,
+        "line_total": 11.99
+      }
+    ],
+    "total_items": 2,
+    "grand_total": 71.98
   }
 ]

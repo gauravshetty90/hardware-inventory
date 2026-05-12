@@ -75,3 +75,10 @@ class SalesService:
     def get_total_items_sold(self) -> int:
         sales = self.sales_store.load_sales()
         return sum(sale.total_items for sale in sales)
+    
+    def get_sale_by_id(self, sale_id: str) -> Sale | None:
+        sales = self.sales_store.load_sales()
+        for sale in sales:
+            if sale.sale_id == sale_id:
+                return sale
+        return None

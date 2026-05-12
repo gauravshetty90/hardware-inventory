@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from hardware_inventory.ui.sale_details_dialog import SaleDetailsDialog
+
 
 class SalesTab(QWidget):
     def __init__(self, sales_service, inventory_service, on_sale_recorded=None):
@@ -49,8 +51,10 @@ class SalesTab(QWidget):
         self.sale_date_input.setDate(QDate.currentDate())
 
         self.add_item_button = QPushButton("Add Item")
-
-        self.record_button = QPushButton("Record Sale")
+        self.remove_item_button = QPushButton("Remove Selected Item")
+        self.record_sale_button = QPushButton("Record Sale")
+        self.view_sale_button = QPushButton("View Sale Details")
+        self.total_label = QLabel("Grand Total: 0.00")
 
         form_layout.addRow("Product:", self.product_combo)
         form_layout.addRow("Quantity:", self.quantity_input)
@@ -58,15 +62,15 @@ class SalesTab(QWidget):
         form_layout.addRow("Sale Date:", self.sale_date_input)
 
         basket_buttons = QHBoxLayout()
-        self.remove_item_button = QPushButton("Remove Selected Item")
-        self.record_sale_button = QPushButton("Record Sale")
-        self.total_label = QLabel("Grand Total: 0.00")
-
         basket_buttons.addWidget(self.add_item_button)
         basket_buttons.addWidget(self.remove_item_button)
         basket_buttons.addStretch()
         basket_buttons.addWidget(self.total_label)
         basket_buttons.addWidget(self.record_sale_button)
+
+        history_buttons = QHBoxLayout()
+        history_buttons.addStretch()
+        history_buttons.addWidget(self.view_sale_button)
 
         self.cart_table = QTableWidget()
         self.cart_table.setColumnCount(5)
@@ -98,6 +102,8 @@ class SalesTab(QWidget):
             QAbstractItemView.EditTrigger.NoEditTriggers)
         self.sales_table.setSelectionBehavior(
             QAbstractItemView.SelectionBehavior.SelectRows)
+        self.sales_table.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection)
 
         main_layout.addLayout(form_layout)
         main_layout.addLayout(basket_buttons)
@@ -105,6 +111,7 @@ class SalesTab(QWidget):
         main_layout.addWidget(self.cart_table)
         main_layout.addWidget(QLabel("Sale History"))
         main_layout.addWidget(self.sales_table)
+        main_layout.addLayout(history_buttons)
 
         self.setLayout(main_layout)
 
@@ -114,6 +121,8 @@ class SalesTab(QWidget):
         self.remove_item_button.clicked.connect(self.remove_selected_item)
         self.record_sale_button.clicked.connect(self.record_sale)
         self.cart_table.itemChanged.connect(self.on_cart_item_changed)
+        self.view_sale_button.clicked.connect(self.view_selected_sale)
+        self.sales_table.itemDoubleClicked.connect(self.view_selected_sale)
 
     def populate_products(self) -> None:
         self.product_combo.clear()
@@ -151,14 +160,14 @@ class SalesTab(QWidget):
             QMessageBox.warning(
                 self, "Add Item", "Selected product was not found.")
             return
-        
+
         for row in range(self.cart_table.rowCount()):
             sku_item = self.cart_table.item(row, 0)
             quantity_item = self.cart_table.item(row, 2)
-        
+
             if sku_item is None or quantity_item is None:
                 continue
-                
+
             if sku_item.text().strip() == product.sku:
                 current_quantity = int(float(quantity_item.text()))
                 quantity_item.setText(str(current_quantity + quantity))
@@ -310,3 +319,32 @@ class SalesTab(QWidget):
                 row, 3, QTableWidgetItem(f"{sale.grand_total:.2f}"))
 
         self.sales_table.resizeColumnsToContents()
+
+    def get_selected_sale_id(self) -> str | None:
+        selected_rows = self.sales_table.selectionModel().selectedRows()
+        if not selected_rows:
+            return None
+
+        row = selected_rows[0].row()
+        sale_id_item = self.sales_table.item(row, 0)
+
+        if sale_id_item is None:
+            return None
+
+        return sale_id_item.text().strip()
+
+    def view_selected_sale(self) -> None:
+        sale_id = self.get_selected_sale_id()
+        if sale_id is None:
+            QMessageBox.information(
+                self, "Sale Details", "Please select a sale first.")
+            return
+
+        sale = self.sales_service.get_sale_by_id(sale_id)
+        if sale is None:
+            QMessageBox.warning(self, "Sale Details",
+                                "Selected sale was not found.")
+            return
+
+        dialog = SaleDetailsDialog(sale, parent=self)
+        dialog.exec()
